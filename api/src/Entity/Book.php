@@ -32,7 +32,6 @@ use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
-
 /**
  * A book.
  *
@@ -100,11 +99,64 @@ use Symfony\Component\Validator\Constraints as Assert;
 )]
 #[ORM\Entity(repositoryClass: BookRepository::class)]
 #[UniqueEntity(fields: ['book'])]
+
+/**
+ * @ORM\Entity
+ * @ApiResource(
+ *     normalizationContext={"groups"={"book:read"}},
+ *     denormalizationContext={"groups"={"book:write"}},
+ *     itemOperations={
+ *         "get",
+ *         "put"={"access_control"="is_granted('ROLE_OIDC_ADMIN')"}
+ *     }
+ * )
+ */
+
+/**
+ * @ORM\Entity
+ */
+
 class Book
 {
     /**
      * @see https://schema.org/identifier
+     
      */
+
+    /**
+     * @ORM\Column(type="string", length=10)
+     * @Assert\NotBlank
+     * @Groups({"book:read_admin"})
+     * @Assert\Choice({"None", "Basic", "Pro"})
+     */
+    private $promotionStatus;
+
+     /**
+     * @ORM\Column(type="string", length=255, unique=true)
+     * @Assert\NotBlank
+     * @Assert\Length(min=5)
+     * @Groups({"book:read", "book:write"})
+     * @Assert\Regex("/^[a-z0-9-]+$/")
+     */
+
+    private $slug;
+
+     /**
+     * Set promotionStatus based on isPromoted
+     */
+    public function setPromotionStatusFromIsPromoted(bool $isPromoted): void
+    {
+        $this->promotionStatus = $isPromoted ? 'Basic' : 'None';
+    }
+
+     /**
+     * Generate slug for existing books
+     */
+    public function setSlugForExistingBooks(int $id): void
+    {
+        $this->slug = 'book-' . $id;
+    }
+
     #[ApiProperty(identifier: true, types: ['https://schema.org/identifier'])]
     #[ORM\Column(type: UuidType::NAME, unique: true)]
     #[ORM\CustomIdGenerator(class: UuidGenerator::class)]
